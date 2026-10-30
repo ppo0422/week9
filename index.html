@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case File: The Missing Quiz Cards</title>
+<style>
+  :root{
+    --bg:#f3f0e8; --card:#ffffff; --ink:#1d2430; --muted:#5d6675; --line:#ddd6c8;
+    --accent:#1f3a5f; --accent2:#c8553d; --hl:#ffe9a8;
+    --ok:#2e7d4f; --okbg:#e7f4ec; --no:#b3392f; --nobg:#fbeae7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  header{background:var(--accent);color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:1.05rem;margin:0}
+  header .tag{font-family:ui-monospace,Consolas,monospace;font-size:.72rem;opacity:.75;display:block;letter-spacing:.08em}
+  .hctl{display:flex;gap:6px;flex-wrap:wrap}
+  .toggle{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;padding:6px 12px;border-radius:999px;cursor:pointer;font-size:.83rem;font-family:inherit}
+  .toggle.on{background:#fff;color:var(--accent);font-weight:700}
+  .wrap{max-width:860px;margin:0 auto;padding:18px 16px 48px}
+  .steps{display:flex;gap:6px;margin-bottom:8px}
+  .step{flex:1;text-align:center;font-size:.75rem;padding:6px 2px;border:none;border-bottom:3px solid var(--line);color:var(--muted);background:transparent;font-family:inherit}
+  .step.done{border-color:var(--ok);color:var(--ok)}
+  .step.now{border-color:var(--accent2);color:var(--ink);font-weight:700}
+  .step.can{cursor:pointer}
+  .step.can:hover{background:rgba(31,58,95,.06)}
+  .step:disabled{cursor:default}
+  .prog{display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:.78rem;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+  .bar{flex:1;height:6px;background:#e4ded1;border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .4s}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .label{font-family:ui-monospace,Consolas,monospace;font-size:.75rem;color:var(--accent2);letter-spacing:.06em}
+  h2{margin:4px 0 6px;font-size:1.3rem}
+  .inst{margin:0 0 14px;color:var(--muted);font-size:.95rem}
+  .ctx{background:#faf8f3;border-left:4px solid var(--accent);padding:12px 14px;border-radius:6px;margin:10px 0 14px;font-size:1.05rem}
+  .ctxrow{display:flex;gap:10px;align-items:flex-start}
+  .ctxrow > div{flex:1}
+  .prompt{font-weight:700;margin:6px 0 4px;font-size:1.05rem}
+  .ko{display:none;color:var(--muted);font-size:.9rem;margin-top:4px}
+  .koi{display:none;color:var(--muted);font-size:.82rem}
+  body.show-ko .ko{display:block}
+  body.show-ko .koi{display:inline}
+  .opt .ko{font-weight:400;font-size:.88rem;margin-top:2px}
+  .qcount{font-family:ui-monospace,Consolas,monospace;font-size:.8rem;color:var(--muted)}
+  .opts{display:grid;gap:8px;margin:12px 0}
+  .optrow{display:flex;gap:6px;align-items:stretch}
+  .optrow .opt{flex:1}
+  .optrow .spk{height:auto;min-height:44px}
+  .opt{text-align:left;padding:12px 14px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:1rem;cursor:pointer;color:var(--ink);font-family:inherit}
+  .opt:hover:not(:disabled){border-color:var(--accent)}
+  .opt.right{border-color:var(--ok);background:var(--okbg);font-weight:700}
+  .opt.wrong{border-color:var(--no);background:var(--nobg);text-decoration:line-through;opacity:.75}
+  .opt:disabled{cursor:default}
+  .spk{border:1px solid var(--line);background:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer;flex-shrink:0;font-size:1rem;line-height:1;padding:0}
+  .spk:hover{border-color:var(--accent);background:#eef2f7}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .row.end{justify-content:flex-end}
+  .row.nav{justify-content:space-between;margin-top:14px}
+  button.primary{background:var(--accent);color:#fff;border:none;padding:10px 18px;border-radius:10px;font-size:.98rem;cursor:pointer;font-family:inherit}
+  button.primary:hover{opacity:.9}
+  button.primary:disabled{opacity:.4;cursor:default}
+  button.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:8px;font-size:.88rem;cursor:pointer;font-family:inherit}
+  button.ghost.sel{border-color:var(--accent);color:var(--accent);font-weight:700}
+  button.back{font-size:.82rem;padding:5px 10px;color:var(--muted)}
+  .hint{display:none;background:#fff8e3;border:1px dashed #e0c36a;padding:8px 12px;border-radius:8px;font-size:.92rem;margin-top:8px}
+  .fb{margin-top:10px;border-radius:8px;font-size:.95rem}
+  .fb.ok{background:var(--okbg);color:#1f5a38;padding:10px 12px}
+  .fb.no{background:var(--nobg);color:#7d241c;padding:10px 12px}
+  mark{background:var(--hl);padding:0 3px;border-radius:3px;font-weight:700}
+  mark[data-say]{cursor:pointer}
+  u{text-decoration-color:var(--no);text-decoration-thickness:2px}
+  .passage{font-size:1.06rem;line-height:1.8}
+  .sent{display:flex;gap:10px;align-items:flex-start;padding:6px 8px;border-radius:8px;transition:background .2s}
+  .sent > div{flex:1}
+  .sent.playing{background:#fff1c2}
+  .w{background:none;border:none;border-bottom:1.5px dotted var(--accent);padding:0;font:inherit;color:inherit;cursor:pointer;line-height:1.4}
+  .w:hover{background:#eef2f7}
+  .wordbox{margin-top:10px;padding:8px 12px;background:#fff;border:1px dashed #c9d3e0;border-radius:8px;font-size:.93rem;color:var(--muted);min-height:40px}
+  .wordbox b{color:var(--accent);margin-right:6px}
+  .suspects{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0}
+  .sus{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+  .sus .spk{float:right;width:30px;height:30px;font-size:.9rem}
+  .sus b{display:block;font-size:1.02rem}
+  .sus span{font-size:.92rem}
+  .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}
+  .mode{text-align:left;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;font-family:inherit;color:var(--ink)}
+  .mode b{display:block;font-size:1.02rem;margin-bottom:2px}
+  .mode span{font-size:.88rem;color:var(--muted)}
+  .mode.sel{border-color:var(--accent);background:#f2f5fa}
+  .gloss{margin:4px 0 12px}
+  .gpanel{margin-top:8px;border:1px solid #d3dbe6;background:#f5f8fc;border-radius:10px;padding:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px}
+  .gpanel[hidden]{display:none}
+  .gitem{background:#fff;border-radius:8px;padding:8px 10px;font-size:.9rem;border:1px solid #e3e8ef}
+  .gitem .spk{float:right;width:28px;height:28px;font-size:.85rem}
+  .gitem b{display:block;color:var(--accent)}
+  .gitem em{display:block;font-style:normal;color:var(--muted);font-size:.84rem}
+  .board{margin-top:16px}
+  .board h3{font-size:.85rem;font-family:ui-monospace,Consolas,monospace;color:var(--muted);margin:0 0 8px;letter-spacing:.06em}
+  .clues{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+  .clue{border:1.5px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;color:var(--muted);background:rgba(255,255,255,.5)}
+  .clue.open{border-style:solid;border-color:var(--accent2);background:#fff;color:var(--ink)}
+  .clue .n{font-family:ui-monospace,Consolas,monospace;font-size:.72rem;color:var(--accent2);display:block}
+  .unlock{text-align:center;padding:18px 6px}
+  .unlock .big{font-size:1.15rem;font-weight:700;margin:10px 0 4px}
+  .frames{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:6px;margin:8px 0}
+  .frame{text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:.93rem;font-family:inherit;color:var(--ink)}
+  .frame:hover{border-color:var(--accent)}
+  .frame.used{border-color:var(--ok);background:var(--okbg)}
+  .frame .ko{font-size:.82rem;margin-top:2px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;font-size:.88rem;align-items:center;color:var(--muted)}
+  .chip{background:#eef2f7;border:1px solid #d3dbe6;border-radius:999px;padding:4px 10px;cursor:pointer;font-size:.88rem;font-family:inherit;color:var(--ink)}
+  .pill{display:inline-block;background:var(--hl);border-radius:6px;padding:2px 8px;margin:2px;font-size:.88rem;font-weight:600}
+  textarea{width:100%;font-size:1.05rem;padding:12px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;line-height:1.6;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .preview{background:#faf8f3;padding:10px 12px;border-radius:8px;margin:8px 0;font-size:1.02rem}
+  ul.msgs{margin:6px 0 0;padding-left:20px}
+  .selfcheck{border:1px solid #d3dbe6;background:#f5f8fc;border-radius:10px;padding:10px 12px;margin-top:10px}
+  .selfcheck label{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:.93rem;cursor:pointer}
+  .selfcheck input{margin-top:5px;width:18px;height:18px;flex-shrink:0}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.95rem}
+  td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:middle}
+  th{font-size:.8rem;color:var(--muted)}
+  td .spk{width:28px;height:28px;font-size:.85rem}
+  .stat{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+  .stat div{background:#faf8f3;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .stat b{font-size:1.3rem;display:block}
+  .bonus{border:2px solid var(--accent2);border-radius:12px;padding:14px;margin-top:16px;background:#fff7f4}
+  @media (max-width:560px){ .step{font-size:.66rem} .card{padding:16px} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <span class="tag">CASE FILE #08 · SCHOOL FESTIVAL</span>
+    <h1>The Missing Quiz Cards</h1>
+  </div>
+  <div class="hctl">
+    <button class="toggle" id="rateBtn">속도: 보통</button>
+    <button class="toggle" id="helpBtn">도움 모드</button>
+    <button class="toggle" id="koToggle">문장 해석 보기</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="steps" id="steps"></div>
+  <div class="prog"><span id="progTxt">진행 0 / 18</span><div class="bar"><i id="progBar"></i></div></div>
+  <main class="card" id="main"></main>
+  <section class="board" id="board"></section>
+</div>
+
+<script>
+/* ================= 상태 ================= */
+const S = {
+  max:0, clues:[false,false,false,false], qs:{},
+  draft:'', sentence:'', used:[], writePassed:false,
+  bonusDraft:'', bonusDone:false,
+  glossOpen:false, help:false, rate:0.9,
+  rerender:null
+};
+const STEPS = ['사건','읽기','의미','형태','활용','쓰기','해결'];
+const MAIN_KEYS = ['read','meaning','form','use','solve'];
+
+/* ================= 음성(TTS) ================= */
+const TTS = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+let voice = null, playToken = 0;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v=>/en[-_]US/i.test(v.lang) && /Google|Samantha|Microsoft|Natural/i.test(v.name))
+       || vs.find(v=>/en[-_]US/i.test(v.lang))
+       || vs.find(v=>/^en/i.test(v.lang)) || null;
+}
+if(TTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+
+function speak(text, onend, chain){
+  if(!TTS || !text) return;
+  if(!chain) playToken++;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; if(voice) u.voice = voice; u.rate = S.rate;
+  if(onend) u.onend = onend;
+  speechSynthesis.speak(u);
+}
+function stopAll(){
+  playToken++;
+  if(TTS) speechSynthesis.cancel();
+  document.querySelectorAll('.sent').forEach(r=>r.classList.remove('playing'));
+}
+function playAll(){
+  if(!TTS) return;
+  const t = ++playToken;
+  const rows = [...document.querySelectorAll('.sent')];
+  let i = 0;
+  const next = ()=>{
+    rows.forEach(r=>r.classList.remove('playing'));
+    if(t !== playToken || i >= rows.length) return;
+    const r = rows[i++];
+    r.classList.add('playing');
+    r.scrollIntoView({block:'nearest',behavior:'smooth'});
+    speak(r.dataset.line, next, true);
+  };
+  next();
+}
+
+/* ================= 유틸 ================= */
+const main = document.getElementById('main');
+const esc  = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const attr = s => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+function plain(html){
+  const d = document.createElement('div'); d.innerHTML = html || '';
+  return d.textContent.replace(/_{2,}/g,' blank ').replace(/\s+/g,' ').trim();
+}
+function sayBtn(text){
+  return TTS && text ? `<button class="spk" data-say="${attr(text)}" title="듣기" aria-label="듣기">🔊</button>` : '';
+}
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+const W = (w,k)=>`<button class="w" data-k="${attr(k)}">${w}</button>`;
+const M = e=>`<mark data-say="${e}">${e}</mark>`;
+
+/* ================= 콘텐츠 ================= */
+const EXPR = [
+  {e:'in charge of',      k:'~을 책임지는, 담당하는',          ex:'Mina is in charge of the booth.'},
+  {e:'take part in',      k:'~에 참여하다',                    ex:'Everyone took part in the game.'},
+  {e:'figure out',        k:'(생각해서) 알아내다, 해결하다',    ex:'I figured out the answer.'},
+  {e:'work on',           k:'~에 공들이다, ~을 작업하다',       ex:'We are working on a poster.'},
+  {e:'cut down on',       k:'~을 줄이다',                      ex:'Let\'s cut down on snacks.'},
+  {e:'make a difference', k:'변화를 가져오다, 좋은 영향을 주다', ex:'Small changes make a difference.'}
+];
+
+const SUSPECTS = [
+  {n:'Mina', d:'is <b>in charge of</b> the English booth.', k:'영어 부스를 책임지고 있다.'},
+  {n:'Jun',  d:'<b>worked on</b> the posters.', k:'포스터 작업을 했다.'},
+  {n:'Sora', d:'<b>took part in</b> testing the game.', k:'게임 테스트에 참여했다.'},
+  {n:'Theo', d:'<b>figured out</b> the mystery theme.', k:'미스터리 테마를 생각해 냈다.'}
+];
+
+const CLUES = [
+  {t:'The person with the cards is <b>NOT in charge of</b> the booth.', k:'카드를 가진 사람은 부스 책임자가 아니다.'},
+  {t:'The person with the cards did <b>NOT work on</b> the posters.', k:'카드를 가진 사람은 포스터 작업을 하지 않았다.'},
+  {t:'The person took the cards to <b>cut down on</b> the long instructions.', k:'그 사람은 긴 설명을 줄이려고 카드를 가져갔다.'},
+  {t:'This person <b>took part in</b> testing the game. That\'s when they saw the problem.', k:'이 사람은 게임 테스트에 참여했다. 그때 문제를 발견했다.'}
+];
+
+/* 본문: 문장 단위 + 어려운 단어(점선) 뜻 */
+const SENTS = [
+  { en:`Our class is ${W('preparing','준비하는 중인')} for the school ${W('festival','축제')}.`,
+    ko:'우리 반은 학교 축제를 준비하고 있다.' },
+  { en:`Mina is ${M('in charge of')} the English ${W('booth','부스 (행사장의 작은 공간)')}.`,
+    ko:'미나는 영어 부스를 맡고 있다.' },
+  { en:`She ${W('asked','부탁했다')} everyone to ${M('take part in')} a short quiz game.`,
+    ko:'미나는 모두에게 짧은 퀴즈 게임에 참여해 달라고 부탁했다.' },
+  { en:`${W('At first','처음에는')}, the team could not ${M('figure out')} how to make the ${W('activity','활동')} ${W('interesting','재미있는')}.`,
+    ko:'처음에 팀은 활동을 재미있게 만드는 방법을 알아내지 못했다.' },
+  { en:`They ${W('decided','결정했다')} to ${M('work on')} a ${W('mystery','미스터리, 수수께끼')} ${W('theme','주제, 테마')}.`,
+    ko:'그들은 미스터리 테마로 작업하기로 했다.' },
+  { en:`After ${W('testing','시험해 보기')} the game, they decided to ${M('cut down on')} long ${W('instructions','설명, 안내문')}.`,
+    ko:'게임을 테스트한 후, 그들은 긴 설명을 줄이기로 했다.' },
+  { en:`They ${W('hope','바라다')} these ${W('changes','변화들')} will ${M('make a difference')} for the students who ${W('visit','방문하다')} the booth.`,
+    ko:'그들은 이 변화가 부스를 찾는 학생들에게 좋은 영향을 주기를 바란다.' }
+];
+
+/* STEP 1 */
+const READ_QS = [
+  { prompt:'After testing the game, what did the team change?',
+    promptKo:'게임을 테스트한 후, 팀은 무엇을 바꾸었나요?',
+    hint:'본문의 끝에서 두 번째 문장을 다시 들어 보세요. "After testing the game..."',
+    explain:'본문에 <b>they decided to cut down on long instructions</b>라고 나와요.',
+    options:[
+      {t:'They made the instructions shorter.', k:'설명을 더 짧게 만들었다.', ok:true},
+      {t:'They added more instructions.', k:'설명을 더 추가했다.', why:'반대예요. 설명을 더 늘린 게 아니라 줄였어요.'},
+      {t:'They stopped the quiz game.', k:'퀴즈 게임을 그만두었다.', why:'게임을 그만둔 게 아니라, 게임의 한 부분을 바꿨어요.'}
+    ]}
+];
+
+/* STEP 2 */
+const MEANING_QS = [
+  { ctx:'Mina is <mark>in charge of</mark> the English booth.', ctxKo:'미나는 영어 부스를 ______.',
+    prompt:'What does <b>in charge of</b> mean here?',
+    hint:'미나는 모두에게 퀴즈에 참여해 달라고 부탁하는 사람이에요. 부스에서 어떤 역할일까요?',
+    explain:'<b>in charge of</b> = ~을 책임지는, 담당하는. 미나는 부스의 책임자예요.',
+    options:[
+      {t:'responsible for something; the leader of it', k:'어떤 일을 책임지는; 그 일의 리더인', ok:true},
+      {t:'paying money for something', k:'어떤 것에 돈을 내는', why:'charge에 "요금"이라는 뜻도 있지만, 여기서는 부스를 "맡고 있다"는 뜻이에요.'},
+      {t:'worried about something', k:'어떤 것을 걱정하는', why:'미나가 걱정한다는 내용은 본문에 없어요. 미나가 하는 일을 생각해 보세요.'}
+    ]},
+  { ctx:'She asked everyone to <mark>take part in</mark> a short quiz game.', ctxKo:'미나는 모두에게 짧은 퀴즈 게임에 ______ 달라고 부탁했다.',
+    prompt:'What does <b>take part in</b> mean here?',
+    hint:'퀴즈 게임을 만들었으면 사람들이 무엇을 해 주길 바랄까요?',
+    explain:'<b>take part in</b> = ~에 참여하다. 세 단어를 한 덩어리로 기억하세요.',
+    options:[
+      {t:'join an activity and do it', k:'활동에 들어가서 직접 하다', ok:true},
+      {t:'take a piece of something away', k:'어떤 것의 한 조각을 가져가다', why:'take, part를 따로 보면 "일부를 가져가다" 같지만, take part in은 덩어리로 "참여하다"예요.'},
+      {t:'watch other people from far away', k:'멀리서 다른 사람들을 구경하다', why:'구경만 하는 게 아니라 직접 하는 거예요.'}
+    ]},
+  { ctx:'At first, the team could not <mark>figure out</mark> how to make the activity interesting.', ctxKo:'처음에 팀은 활동을 재미있게 만드는 방법을 ______ 못했다.',
+    prompt:'What does <b>figure out</b> mean here?',
+    hint:'"how to make ~ interesting"은 하나의 문제예요. 문제를 어떻게 하지 못했을까요?',
+    explain:'<b>figure out</b> = (생각해서) 알아내다, 해결하다.',
+    options:[
+      {t:'find the answer by thinking', k:'생각해서 답을 찾다', ok:true},
+      {t:'draw a figure or a picture', k:'도형이나 그림을 그리다', why:'figure에 "그림, 도형"이라는 뜻도 있지만, figure out은 "알아내다"예요.'},
+      {t:'count the number of students', k:'학생 수를 세다', why:'숫자를 세는 상황이 아니라, 방법을 찾는 상황이에요.'}
+    ]},
+  { ctx:'They decided to <mark>work on</mark> a mystery theme.', ctxKo:'그들은 미스터리 테마에 ______ 하기로 했다.',
+    prompt:'What does <b>work on</b> mean here?',
+    hint:'테마를 정하고 나서 그 테마로 무엇을 할까요?',
+    explain:'<b>work on</b> = ~에 공들이다, ~을 (만들거나 다듬는) 작업을 하다.',
+    options:[
+      {t:'spend time making or improving something', k:'어떤 것을 만들거나 더 좋게 하려고 시간을 쓰다', ok:true},
+      {t:'go to work at an office', k:'사무실에 출근하다', why:'회사에 출근한다는 뜻이 아니에요. on 뒤의 대상(a mystery theme)을 만드는 거예요.'},
+      {t:'stand on top of something', k:'어떤 것 위에 서다', why:'on을 "~위에"로만 생각하면 이렇게 오해할 수 있어요.'}
+    ]},
+  { ctx:'After testing the game, they decided to <mark>cut down on</mark> long instructions.', ctxKo:'게임을 테스트한 후, 그들은 긴 설명을 ______ 했다.',
+    prompt:'What does <b>cut down on</b> mean here?',
+    hint:'게임을 해 보니 설명이 너무 길었어요. 그럼 설명을 어떻게 해야 할까요?',
+    explain:'<b>cut down on</b> = ~을 줄이다. 양이나 횟수를 줄일 때 써요.',
+    options:[
+      {t:'use or have less of something', k:'어떤 것을 덜 쓰거나 덜 가지다', ok:true},
+      {t:'cut something into small pieces', k:'어떤 것을 작은 조각으로 자르다', why:'가위로 자르는 게 아니라 "양을 줄이는" 거예요.'},
+      {t:'add more of something', k:'어떤 것을 더 추가하다', why:'반대 뜻이에요.'}
+    ]},
+  { ctx:'They hope these changes will <mark>make a difference</mark> for the students.', ctxKo:'그들은 이 변화가 학생들에게 ______ 바란다.',
+    prompt:'What does <b>make a difference</b> mean here?',
+    hint:'팀이 "바라는(hope)" 것이에요. 좋은 일일까요, 나쁜 일일까요?',
+    explain:'<b>make a difference</b> = 변화를 가져오다, 좋은 영향을 주다.',
+    options:[
+      {t:'have a good effect; change things', k:'좋은 영향을 주다; 상황을 바꾸다', ok:true},
+      {t:'find what is different between two things', k:'두 가지 사이의 다른 점을 찾다', why:'"틀린 그림 찾기(spot the difference)"와 헷갈리기 쉬워요. make a difference는 "영향을 주다"예요.'},
+      {t:'make a mistake', k:'실수를 하다', why:'실수를 바라는 사람은 없겠죠? hope와 함께 쓰였다는 점을 보세요.'}
+    ]}
+];
+
+/* STEP 3 */
+const FORM_QS = [
+  { ctx:'Jiho is in charge <b>______</b> the music for the festival.', ctxKo:'지호는 축제 음악을 맡고 있다.',
+    prompt:'Choose the right word.',
+    hint:'본문의 "Mina is in charge ___ the English booth"를 떠올려 보세요.',
+    explain:'in charge 뒤에는 항상 <b>of</b>가 와요.',
+    options:[
+      {t:'of', ok:true},
+      {t:'for', why:'"~을 위해"를 떠올리면 for를 쓰기 쉬워요. 하지만 in charge 뒤에는 of가 와요.'},
+      {t:'with', why:'in charge with라고 쓰지 않아요.'}
+    ]},
+  { ctx:'Yesterday, our class <b>______</b> the quiz game.', ctxKo:'어제 우리 반은 퀴즈 게임에 참여했다.',
+    prompt:'Choose the right form.',
+    hint:'두 가지를 확인하세요. ① Yesterday → 시제 ② take part 뒤에 오는 단어',
+    explain:'Yesterday → 과거, 그리고 전치사는 in: <b>took part in</b>',
+    options:[
+      {t:'took part in', ok:true},
+      {t:'takes part in', why:'전치사는 맞지만, Yesterday(어제)이므로 과거형이 필요해요.'},
+      {t:'took part on', why:'과거형은 맞지만, take part 뒤에는 on이 아니라 in이 와요.'}
+    ]},
+  { ctx:'This puzzle is too hard.', ctxKo:'이 퍼즐은 너무 어렵다. 나는 그것을 알아낼 수 없다.',
+    prompt:'Which sentence is correct?',
+    hint:'it, them 같은 짧은 대명사는 어디에 들어갈까요?',
+    explain:'대명사(it, them)는 figure와 out <b>사이</b>에 와요: figure <b>it</b> out',
+    options:[
+      {t:'I can\'t figure it out.', ok:true},
+      {t:'I can\'t figure out it.', why:'it, them 같은 대명사는 figure와 out 사이에 들어가야 해요.'},
+      {t:'I can\'t figure it.', why:'out이 빠지면 "알아내다"라는 뜻이 완성되지 않아요.'}
+    ]},
+  { ctx:'We should cut down <b>______</b> sugary snacks.', ctxKo:'우리는 단 간식을 줄여야 한다.',
+    prompt:'Choose the right word.',
+    hint:'"~을 줄이다"는 세 단어예요: cut down ___',
+    explain:'<b>cut down on</b> + 줄일 대상',
+    options:[
+      {t:'on', ok:true},
+      {t:'in', why:'cut down in이라고 쓰지 않아요.'},
+      {t:'(nothing / 아무것도 안 씀)', why:'on이 빠지면 cut down은 "(나무 등을) 베어 넘기다"라는 다른 뜻이 될 수 있어요.'}
+    ]}
+];
+
+/* STEP 4 */
+const USE_QS = [
+  { ctx:'Seo-yeon is the leader of the class trip. Everyone asks her, "What should I do?"', ctxKo:'서연이는 학급 여행의 리더다. 모두가 서연이에게 "나 뭐 하면 돼?"라고 묻는다.',
+    prompt:'Seo-yeon <b>______</b> the class trip.',
+    hint:'모두가 할 일을 묻는 사람은 어떤 사람일까요?',
+    explain:'모두에게 할 일을 정해 주는 리더 → <b>is in charge of</b>',
+    options:[
+      {t:'is in charge of', ok:true},
+      {t:'is taking part in', why:'여행에 참여하는 건 맞지만, 모두가 할 일을 묻는 "리더"라는 점이 핵심이에요.'},
+      {t:'is cutting down on', why:'여행을 줄인다는 뜻이 되어 상황과 맞지 않아요.'}
+    ]},
+  { ctx:'The school has a singing contest. Jiwoo signs up and sings on the stage.', ctxKo:'학교에서 노래 대회가 열린다. 지우는 신청해서 무대에서 노래한다.',
+    prompt:'Jiwoo <b>______</b> the singing contest.',
+    hint:'지우는 대회를 운영했나요, 무대에서 노래했나요?',
+    explain:'무대에서 노래한 참가자 → <b>took part in</b>',
+    options:[
+      {t:'took part in', ok:true},
+      {t:'was in charge of', why:'대회를 운영한 사람이 아니라 무대에서 노래한 참가자예요.'},
+      {t:'cut down on', why:'대회를 줄였다는 뜻이 되어 맞지 않아요.'}
+    ]},
+  { ctx:'The math problem was really hard. Yuna thought about it for 20 minutes. Finally, she knew the answer!', ctxKo:'수학 문제가 정말 어려웠다. 유나는 20분 동안 고민했다. 마침내 답을 알게 되었다!',
+    prompt:'Finally, Yuna <b>______</b> the answer.',
+    hint:'"Finally ... knew the answer"는 노력하는 중일까요, 답을 알게 된 순간일까요?',
+    explain:'고민 끝에 답을 알게 된 순간 → <b>figured out</b>',
+    options:[
+      {t:'figured out', ok:true},
+      {t:'worked on', why:'20분 동안 "붙잡고 노력한" 것은 work on이에요. 하지만 Finally 이후는 답을 "알아낸" 순간이에요.'},
+      {t:'took part in', why:'답에 "참여했다"는 어색해요.'}
+    ]},
+  { ctx:'Hana\'s class picked up 300 plastic bottles in the park. Now the park is much cleaner.', ctxKo:'하나네 반은 공원에서 플라스틱병 300개를 주웠다. 이제 공원이 훨씬 깨끗하다.',
+    prompt:'Which sentence fits best?',
+    hint:'작은 행동이 공원에 어떤 결과를 가져왔나요?',
+    explain:'작은 행동이 좋은 변화를 가져옴 → <b>made a difference</b>',
+    options:[
+      {t:'Their small action made a difference.', ok:true},
+      {t:'Their small action cut down on the park.', why:'"공원을 줄였다"가 되어 어색해요. 줄어든 건 공원이 아니라 쓰레기예요.'},
+      {t:'They took part in the bottles.', why:'병에 "참여했다"는 말이 되지 않아요.'}
+    ]}
+];
+
+/* FINAL */
+const SOLVE_QS = [
+  { prompt:'Who has the quiz cards?', promptKo:'퀴즈 카드를 가진 사람은 누구일까요?',
+    hint:'Clue 1과 Clue 2로 두 명을 지우고, Clue 4로 한 명을 고르세요.',
+    explain:'Clue 1, 2로 Mina와 Jun이 빠지고, Clue 4에서 게임 테스트에 참여한(took part in) 사람은 <b>Sora</b>뿐이에요.',
+    options:[
+      {t:'Sora', ok:true},
+      {t:'Mina', why:'Clue 1: 카드를 가진 사람은 부스 책임자가 아니에요. Mina is in charge of the booth.'},
+      {t:'Jun', why:'Clue 2: 카드를 가진 사람은 포스터 작업을 하지 않았어요. Jun worked on the posters.'},
+      {t:'Theo', why:'Clue 4: 게임 테스트에 참여한 사람이에요. Theo는 테마를 생각해 냈어요(figured out).'}
+    ]},
+  { prompt:'Why did Sora take the cards?', promptKo:'소라는 왜 카드를 가져갔을까요?',
+    hint:'Clue 3을 다시 읽어 보세요.',
+    explain:'Clue 3: 긴 설명을 줄이기 위해서였어요.',
+    options:[
+      {t:'To cut down on the long instructions.', k:'긴 설명을 줄이기 위해서', ok:true},
+      {t:'To take part in another booth.', k:'다른 부스에 참여하기 위해서', why:'다른 부스에 참여한다는 단서는 없어요. Clue 3을 보세요.'},
+      {t:'Because she was in charge of the posters.', k:'포스터를 책임지고 있었기 때문에', why:'포스터는 Jun이 작업했고, 소라는 게임 테스트에 참여했어요.'}
+    ]}
+];
+
+/* BONUS */
+const BONUS_QS = [
+  { ctx:'Sora\'s new card 1: "Everyone can take part <u>on</u> this game!"', ctxKo:'모두가 이 게임에 참여할 수 있어요!',
+    prompt:'Help Sora fix the mistake.',
+    hint:'take part 뒤에 오는 전치사는?',
+    explain:'<b>take part in</b> this game',
+    options:[
+      {t:'Everyone can take part in this game!', ok:true},
+      {t:'Everyone can take part at this game!', why:'take part 뒤에는 in이 와요.'},
+      {t:'Everyone can take part this game!', why:'전치사 in이 꼭 필요해요.'}
+    ]},
+  { ctx:'Sora\'s new card 2: "Can you figure out <u>it</u>?"', ctxKo:'그것을 알아낼 수 있나요?',
+    prompt:'Help Sora fix the mistake.',
+    hint:'대명사 it의 위치를 생각해 보세요.',
+    explain:'대명사는 가운데: figure <b>it</b> out',
+    options:[
+      {t:'Can you figure it out?', ok:true},
+      {t:'Can you figure it?', why:'out이 빠지면 뜻이 완성되지 않아요.'},
+      {t:'Can you out figure it?', why:'out은 동사 앞에 오지 않아요.'}
+    ]},
+  { ctx:'Sora\'s new card 3: "Small changes can <u>do</u> a big difference."', ctxKo:'작은 변화가 큰 차이를 만들 수 있어요.',
+    prompt:'Help Sora fix the mistake.',
+    hint:'difference와 짝이 되는 동사는?',
+    explain:'difference는 make와 짝: <b>make</b> a big difference',
+    options:[
+      {t:'Small changes can make a big difference.', ok:true},
+      {t:'Small changes can give a big difference.', why:'give a difference라고 쓰지 않아요.'},
+      {t:'Small changes can have a big difference.', why:'difference는 make와 함께 써요.'}
+    ]},
+  { ctx:'Jun\'s posters are not finished yet. He is still drawing and coloring them.', ctxKo:'준의 포스터는 아직 완성되지 않았다. 아직 그리고 색칠하는 중이다.',
+    prompt:'Jun: "I\'m still <b>______</b> the posters."',
+    hint:'아직 완성되지 않아서 계속 만들고 있는 중이에요.',
+    explain:'계속 만들고 다듬는 중 → <b>working on</b>',
+    options:[
+      {t:'working on', ok:true},
+      {t:'taking part in', why:'포스터에 "참여하는" 게 아니라 직접 만드는 중이에요.'},
+      {t:'cutting down on', why:'포스터를 줄이는 게 아니라 완성하려고 작업 중이에요.'}
+    ]}
+];
+
+/* ================= 쓰기 ================= */
+const FRAMES = [
+  {e:'in charge of',      t:'I am in charge of ____.',                               k:'나는 ____을/를 맡고 있다.'},
+  {e:'take part in',      t:'I want everyone to take part in ____.',                 k:'나는 모두가 ____에 참여하면 좋겠다.'},
+  {e:'figure out',        t:'We need to figure out how to ____.',                    k:'우리는 ____하는 방법을 알아내야 한다.'},
+  {e:'work on',           t:'I will work on ____ with my friends.',                  k:'나는 친구들과 ____ 작업을 할 것이다.'},
+  {e:'cut down on',       t:'We should cut down on ____ because ____.',              k:'우리는 ____을/를 줄여야 한다. 왜냐하면 ____.'},
+  {e:'make a difference', t:'I hope our booth will make a difference because ____.', k:'우리 부스가 좋은 변화를 가져오면 좋겠다. 왜냐하면 ____.'}
+];
+const IDEAS = [
+  {t:'the posters',k:'포스터'},{t:'the music',k:'음악'},{t:'the quiz game',k:'퀴즈 게임'},
+  {t:'the decorations',k:'장식'},{t:'long instructions',k:'긴 설명'},{t:'the noise',k:'소음'},
+  {t:'make the booth fun',k:'부스를 재미있게 만들다'},{t:'it is fun and easy',k:'재미있고 쉽다'},
+  {t:'students will enjoy it',k:'학생들이 즐길 것이다'}
+];
+
+const PAT = [
+  {name:'in charge of', re:/\bin\s+charge\s+of\b/i},
+  {name:'take part in', re:/\b(take|takes|took|taking|taken)\s+part\s+in\b/i},
+  {name:'figure out', re:/\b(figure|figures|figured|figuring)\s+(?:[a-z]+\s+)?out\b/i},
+  {name:'work on', re:/\b(work|works|worked|working)\s+on\b/i},
+  {name:'cut down on', re:/\b(cut|cuts|cutting)\s+down\s+on\b/i},
+  {name:'make a difference', re:/\b(make|makes|made|making)\s+a\s+(?:big\s+|huge\s+|real\s+)?difference\b/i}
+];
+const ERR = [
+  {re:/\bin\s+charge\s+(for|with|at|to)\b/i, tip:'in charge 뒤에는 <b>of</b>가 와요. (in charge of)'},
+  {re:/\b(take|takes|took|taking|taken)\s+part\s+(on|at|to|of)\b/i, tip:'take part 뒤에는 <b>in</b>이 와요. (take part in)'},
+  {re:/\b(cut|cuts|cutting)\s+down\s+(?!on\b)[a-z]+/i, tip:'"~을 줄이다"는 <b>cut down on</b>이에요. on을 빠뜨리지 않았나요?'},
+  {re:/\b(figure|figures|figured|figuring)\s+out\s+(it|them|him|her)\b/i, tip:'대명사는 figure와 out 사이에 와요. (figure <b>it</b> out)'},
+  {re:/\b(do|does|did|doing)\s+a\s+(?:big\s+)?difference\b/i, tip:'difference는 <b>make</b>와 짝이에요. (make a difference)'}
+];
+const SELF = {
+  'in charge of':'<b>in charge of</b> 뒤에 내가 <b>책임지는 일</b>이 왔나요? (예: the music, the booth)',
+  'take part in':'<b>take part in</b> 뒤에 <b>참여하는 활동</b>이 왔나요? (예: the game, the contest)',
+  'figure out':'<b>figure out</b> 뒤에 <b>알아내야 할 문제</b>가 왔나요? (예: how to ~, the answer)',
+  'work on':'<b>work on</b> 뒤에 내가 <b>만들거나 다듬는 것</b>이 왔나요? (예: the posters, a plan)',
+  'cut down on':'<b>cut down on</b> 뒤에 <b>줄일 수 있는 것</b>이 왔나요? (예: noise, time, long instructions)',
+  'make a difference':'<b>make a difference</b> 문장에 <b>어떤 좋은 변화</b>인지 이유가 드러나나요?'
+};
+
+const TOTAL = READ_QS.length + MEANING_QS.length + FORM_QS.length + USE_QS.length + SOLVE_QS.length + 1;
+
+function analyze(t){
+  return {
+    found: PAT.filter(p=>p.re.test(t)).map(p=>p.name),
+    errs: ERR.filter(e=>e.re.test(t)).map(e=>e.tip)
+  };
+}
+function highlight(t){
+  let h = esc(t);
+  PAT.forEach(p=>{ h = h.replace(new RegExp(p.re.source,'gi'), m=>`<mark>${m}</mark>`); });
+  return h;
+}
+
+/* ================= 공통 UI ================= */
+function updateProgress(){
+  let done = S.writePassed ? 1 : 0;
+  MAIN_KEYS.forEach(k=>{ (S.qs[k]||[]).forEach(x=>{ if(x.solved) done++; }); });
+  document.getElementById('progTxt').textContent = `진행 ${done} / ${TOTAL}`;
+  document.getElementById('progBar').style.width = (done/TOTAL*100) + '%';
+}
+
+function setStep(n){
+  stopAll();
+  S.max = Math.max(S.max, n);
+  document.getElementById('steps').innerHTML = STEPS.map((s,i)=>{
+    const can = i <= S.max && i !== n;
+    return `<button class="step ${i<n?'done':''} ${i===n?'now':''} ${can?'can':''}" data-step="${i}" ${can?'':'disabled'}>${s}</button>`;
+  }).join('');
+  updateProgress();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderBoard(){
+  document.getElementById('board').innerHTML = `<h3>CLUE BOARD</h3><div class="clues">${
+    CLUES.map((c,i)=> S.clues[i]
+      ? `<div class="clue open"><span class="n">CLUE ${i+1}</span>${c.t}<div class="ko">${c.k}</div></div>`
+      : `<div class="clue"><span class="n">CLUE ${i+1}</span>잠김 · Locked</div>`).join('')
+  }</div>`;
+}
+
+function backBtn(to, label){
+  return to >= 0 ? `<button class="ghost back" data-to="${to}">${label||'← 이전 단계'}</button>` : '';
+}
+
+function glossBox(){
+  return `<div class="gloss">
+    <button class="ghost ${S.glossOpen?'sel':''}" id="glossBtn">${S.glossOpen?'표현 뜻 닫기':'표현 뜻 보기 (한국어 도움)'}</button>
+    <div class="gpanel" id="gpanel" ${S.glossOpen?'':'hidden'}>
+      ${EXPR.map(x=>`<div class="gitem">${sayBtn(x.e+'. '+x.ex)}<b>${x.e}</b>${x.k}<em>${x.ex}</em></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function suspectsHTML(){
+  return `<div class="suspects">${SUSPECTS.map(s=>`<div class="sus">${sayBtn(s.n+' '+plain(s.d))}<b>${s.n}</b><span>${s.d}</span><div class="ko">${s.k}</div></div>`).join('')}</div>`;
+}
+
+function head(stepNo, min, title, inst, withGloss){
+  return `<div class="topbar"><span class="label">STEP ${stepNo} · 약 ${min}분</span>${backBtn(stepNo-1)}</div>
+    <h2>${title}</h2><p class="inst">${inst}</p>
+    ${withGloss ? glossBox() : ''}
+    <div id="extra"></div><div id="quiz"></div>`;
+}
+
+function setKo(v){
+  document.body.classList.toggle('show-ko', v);
+  const b = document.getElementById('koToggle');
+  b.classList.toggle('on', v);
+  b.textContent = v ? '문장 해석 숨기기' : '문장 해석 보기';
+}
+function setHelp(v){
+  S.help = v;
+  const b = document.getElementById('helpBtn');
+  b.classList.toggle('on', v);
+  b.textContent = v ? '도움 모드 ON' : '도움 모드';
+  setKo(v);
+  S.glossOpen = v;
+  if(S.rerender) S.rerender();
+}
+
+/* ================= 퀴즈 엔진 ================= */
+function runQuiz(key, qs, mount, onDone){
+  const st = S.qs[key] || (S.qs[key] = qs.map(q=>({ wrong:[], removed:[], solved:false, order:shuffle(q.options.map((_,i)=>i)) })));
+  let i = st.findIndex(x=>!x.solved); if(i < 0) i = 0;
+
+  function render(){
+    const q = qs[i], s = st[i];
+    const th = S.help ? 1 : 2;                      // 도움 모드: 한 번 틀리면 힌트
+    const autoHint = s.wrong.length >= th && !s.solved;
+    const sayText = plain((q.ctx||'') + ' ' + q.prompt);
+    const wrongLeft = q.options.map((_,idx)=>idx).filter(idx=>!q.options[idx].ok && !s.wrong.includes(idx) && !s.removed.includes(idx));
+    const canReduce = !s.solved && s.removed.length===0 && wrongLeft.length >= 2;
+
+    const optsHTML = s.order.filter(idx=>!s.removed.includes(idx)).map(idx=>{
+      const o = q.options[idx];
+      let cls = '';
+      if(s.wrong.includes(idx)) cls = 'wrong';
+      if(s.solved && o.ok) cls = 'right';
+      const dis = s.solved || s.wrong.includes(idx);
+      const btn = `<button class="opt ${cls}" data-i="${idx}" ${dis?'disabled':''}>${o.t}${o.k?`<span class="ko">${o.k}</span>`:''}</button>`;
+      return (S.help && TTS) ? `<div class="optrow">${sayBtn(plain(o.t))}${btn}</div>` : btn;
+    }).join('');
+
+    mount.innerHTML = `
+      <div class="qcount">Q ${i+1} / ${qs.length}</div>
+      ${q.ctx ? `<div class="ctx"><div class="ctxrow">${sayBtn(sayText)}<div>${q.ctx}${q.ctxKo?`<div class="ko">${q.ctxKo}</div>`:''}</div></div></div>` : ''}
+      <div class="ctxrow">${q.ctx?'':sayBtn(sayText)}<div><p class="prompt">${q.prompt}</p>${q.promptKo?`<div class="ko">${q.promptKo}</div>`:''}</div></div>
+      <div class="opts">${optsHTML}</div>
+      <div class="row">
+        ${q.hint?'<button class="ghost hintbtn">힌트 보기</button>':''}
+        ${canReduce?'<button class="ghost reduce">선택지 하나 지우기</button>':''}
+      </div>
+      ${q.hint?`<div class="hint" style="${autoHint?'display:block':''}">${q.hint}</div>`:''}
+      <div class="fb ${s.solved?'ok':''}">${s.solved?`<b>정답!</b> ${q.explain||''}`:''}</div>
+      <div class="row nav">
+        <span>${i>0?'<button class="ghost prev">← 이전 문제</button>':''}</span>
+        <button class="primary next" ${s.solved?'':'hidden'}>${i<qs.length-1?'다음 문제 →':'완료 →'}</button>
+      </div>`;
+
+    const hb = mount.querySelector('.hintbtn');
+    if(hb) hb.onclick = ()=>{ mount.querySelector('.hint').style.display='block'; };
+
+    const rd = mount.querySelector('.reduce');
+    if(rd) rd.onclick = ()=>{
+      const pick = wrongLeft[Math.floor(Math.random()*wrongLeft.length)];
+      s.removed.push(pick); render();
+    };
+
+    mount.querySelectorAll('.opt').forEach(b=> b.onclick = ()=>{
+      if(s.solved) return;
+      const idx = +b.dataset.i, o = q.options[idx];
+      const fb = mount.querySelector('.fb');
+      if(o.ok){
+        s.solved = true;
+        render();
+        updateProgress();
+      } else {
+        if(!s.wrong.includes(idx)) s.wrong.push(idx);
+        render();
+        const fb2 = mount.querySelector('.fb');
+        fb2.className='fb no'; fb2.innerHTML = `<b>다시 생각해 볼까요?</b> ${o.why||'상황을 다시 읽어 보세요.'}`;
+      }
+    });
+
+    const pv = mount.querySelector('.prev');
+    if(pv) pv.onclick = ()=>{ i--; render(); };
+    mount.querySelector('.next').onclick = ()=>{ i++; if(i < qs.length) render(); else onDone(); };
+  }
+  render();
+}
+
+function score(){
+  let total=0, first=0;
+  MAIN_KEYS.forEach(k=>(S.qs[k]||[]).forEach(x=>{ if(x.solved){ total++; if(x.wrong.length===0) first++; } }));
+  return {total, first};
+}
+
+function unlockClue(n, stageIdx, next){
+  S.rerender = ()=>unlockClue(n, stageIdx, next);
+  stopAll();
+  S.clues[n] = true; renderBoard();
+  main.innerHTML = `<div class="unlock">
+    <span class="label">CLUE ${n+1} UNLOCKED</span>
+    <div class="big">${CLUES[n].t}</div>
+    <div class="row" style="justify-content:center;margin-top:0">${sayBtn(plain(CLUES[n].t))}</div>
+    <div class="ko">${CLUES[n].k}</div>
+    <p class="inst" style="margin-top:12px">단서가 아래 보드에 추가되었어요.</p>
+    <div class="row" style="justify-content:center">
+      <button class="ghost" data-to="${stageIdx}">← 이 단계 다시 보기</button>
+      <button class="primary" id="go">다음 단계 →</button>
+    </div>
+  </div>`;
+  document.getElementById('go').onclick = next;
+}
+
+/* ================= 화면 ================= */
+function showIntro(){
+  setStep(0); S.rerender = showIntro;
+  const story = 'The school festival is tomorrow. But the quiz cards for the English booth are gone! Find 4 clues and <b>figure out</b> who has the cards.';
+  main.innerHTML = `
+    <span class="label">CASE OPENED</span>
+    <h2>사라진 퀴즈 카드를 찾아라</h2>
+    <div class="ctx"><div class="ctxrow">${sayBtn(plain(story))}<div>${story}
+      <div class="ko">학교 축제가 내일인데, 영어 부스의 퀴즈 카드가 사라졌어요! 단서 4개를 모아 누가 카드를 가지고 있는지 알아내세요.</div></div></div></div>
+    <p class="prompt">Suspects</p>
+    ${suspectsHTML()}
+    <p class="prompt">학습 방식 고르기</p>
+    <div class="modes">
+      <button class="mode ${!S.help?'sel':''}" data-mode="0"><b>스스로 도전</b><span>영어로 먼저 풀어요. 필요할 때만 힌트, 해석, 듣기 버튼을 눌러요.</span></button>
+      <button class="mode ${S.help?'sel':''}" data-mode="1"><b>도움 받으며 하기</b><span>한국어 해석과 표현 뜻이 처음부터 보이고, 선택지도 들을 수 있어요. 한 번만 틀려도 힌트가 열려요.</span></button>
+    </div>
+    <p class="inst">위쪽 <b>도움 모드</b> 버튼으로 언제든 바꿀 수 있어요. 🔊 버튼을 누르면 영어를 들을 수 있고, <b>속도</b> 버튼으로 천천히 들을 수도 있어요.</p>
+    <div class="row end"><button class="primary" id="go">사건 파일 열기 →</button></div>`;
+  document.querySelectorAll('.mode').forEach(b=> b.onclick = ()=> setHelp(b.dataset.mode==='1'));
+  document.getElementById('go').onclick = showRead;
+}
+
+function showRead(){
+  setStep(1); S.rerender = showRead;
+  main.innerHTML = head(1, 1.5, '사건의 배경 듣고 읽기',
+    `① <b>전체 듣기</b>로 본문을 들으며 따라 읽어요.<br>② 점선 단어를 누르면 뜻과 발음이 나와요.<br>③ <b>노란 표현 6개</b>에 주목하세요. 누르면 발음을 들을 수 있어요. 뜻은 다음 단계에서 추측해요.`, false);
+  document.getElementById('extra').innerHTML = `
+    <div class="ctx passage">
+      ${TTS ? `<div class="row" style="margin:0 0 8px"><button class="primary" id="playAll">▶ 전체 듣기</button><button class="ghost" id="stopAll">■ 멈춤</button></div>`
+            : `<p class="inst" style="margin:0 0 8px">이 기기에서는 듣기 기능을 사용할 수 없어요.</p>`}
+      ${SENTS.map(s=>`<div class="sent" data-line="${attr(plain(s.en))}">${sayBtn(plain(s.en))}<div>${s.en}<div class="ko">${s.ko}</div></div></div>`).join('')}
+      <div class="wordbox" id="wordbox">점선 단어를 누르면 여기에 뜻이 나와요.</div>
+    </div>`;
+  if(TTS){
+    document.getElementById('playAll').onclick = playAll;
+    document.getElementById('stopAll').onclick = stopAll;
+  }
+  runQuiz('read', READ_QS, document.getElementById('quiz'), showMeaning);
+}
+
+function showMeaning(){
+  setStep(2); S.rerender = showMeaning;
+  main.innerHTML = head(2, 2.5, '문맥으로 뜻 추측하기',
+    '문장 속 상황을 보고, 노란 표현의 뜻으로 알맞은 것을 고르세요. 단어 하나하나보다 <b>덩어리 전체</b>의 뜻을 생각하세요.<br>선택지의 영어가 어려우면 <b>문장 해석 보기</b>를 켜세요. 선택지 뜻이 한국어로 나와요. 정답은 여전히 <b>문맥을 보고</b> 골라야 해요.', false);
+  runQuiz('meaning', MEANING_QS, document.getElementById('quiz'), ()=>unlockClue(0, 2, showForm));
+}
+
+function showForm(){
+  setStep(3); S.rerender = showForm;
+  main.innerHTML = head(3, 1.5, '정확한 형태 찾기',
+    '뜻을 알아도 형태가 틀리면 어색한 문장이 돼요. 전치사, 단어 순서, 시제를 확인하세요. 표현의 뜻이 기억나지 않으면 아래 버튼을 눌러 확인하세요.', true);
+  runQuiz('form', FORM_QS, document.getElementById('quiz'), ()=>unlockClue(1, 3, showUse));
+}
+
+function showUse(){
+  setStep(4); S.rerender = showUse;
+  main.innerHTML = head(4, 2, '새로운 상황에 적용하기',
+    '모든 선택지가 문법적으로는 가능해요. <b>상황에 가장 알맞은 뜻</b>을 판단해서 고르세요.', true);
+  runQuiz('use', USE_QS, document.getElementById('quiz'), ()=>unlockClue(2, 4, showWrite));
+}
+
+function showWrite(){
+  setStep(5); S.rerender = showWrite;
+  main.innerHTML = head(5, 2, '나의 역할 쓰기',
+    '<b>서로 다른 표현 2개</b>를 사용해서 2문장을 쓰세요. 문장 틀을 눌러 시작하고, 빈칸(____)을 내 생각으로 채우면 돼요. 자신 있으면 자유롭게 써도 좋아요.', true);
+  const q = 'Now <b>you</b> are on the festival team, too. What is your job? What will you do?';
+  const model = 'I am <b>in charge of</b> the music. We should <b>cut down on</b> the noise because people need to hear the quiz.';
+  document.getElementById('quiz').innerHTML = `
+    <div class="ctx"><div class="ctxrow">${sayBtn(plain(q))}<div>${q}
+      <div class="ko">이제 여러분도 축제 준비팀이에요. 맡은 일은 무엇이고, 무엇을 할 건가요?</div></div></div></div>
+    <p class="prompt" style="font-size:.95rem">문장 틀 (2개 고르기)</p>
+    <div class="frames">${FRAMES.map((f,i)=>`<button class="frame" data-f="${i}">${f.t}<div class="ko">${f.k}</div></button>`).join('')}</div>
+    <div class="chips">아이디어: ${IDEAS.map(w=>`<button class="chip" data-t="${attr(w.t)}">${w.t} <span class="koi">(${w.k})</span></button>`).join('')}</div>
+    <textarea id="ta" rows="4" placeholder="문장 틀을 누르거나, 직접 영어로 2문장을 써 보세요."></textarea>
+    <div class="row">
+      <button class="ghost" id="clear">모두 지우기</button>
+      ${TTS?'<button class="ghost" id="listenMine">🔊 내 문장 듣기</button>':''}
+      <span style="flex:1"></span>
+      <button class="primary" id="check">확인하기</button>
+    </div>
+    <div id="wfb"></div>
+    <div id="modelHolder" hidden>${model}</div>`;
+  const ta = document.getElementById('ta');
+  ta.value = S.draft;
+  const markFrames = ()=>{
+    const {found} = analyze(ta.value);
+    document.querySelectorAll('.frame').forEach(b=> b.classList.toggle('used', found.includes(FRAMES[+b.dataset.f].e)));
+  };
+  markFrames();
+  ta.oninput = ()=>{ S.draft = ta.value; markFrames(); };
+  document.querySelectorAll('.frame').forEach(b=> b.onclick = ()=>{
+    const f = FRAMES[+b.dataset.f].t;
+    ta.value = ta.value.trim() ? ta.value.trim() + '\n' + f : f;
+    S.draft = ta.value; markFrames(); ta.focus();
+  });
+  document.querySelectorAll('.chip').forEach(c=> c.onclick = ()=>{
+    const w = c.dataset.t;
+    if(ta.value.includes('____')) ta.value = ta.value.replace('____', w);
+    else {
+      const s = ta.selectionStart ?? ta.value.length;
+      ta.value = ta.value.slice(0,s) + w + ta.value.slice(s);
+    }
+    S.draft = ta.value; markFrames(); ta.focus();
+  });
+  document.getElementById('clear').onclick = ()=>{ ta.value=''; S.draft=''; markFrames(); document.getElementById('wfb').innerHTML=''; ta.focus(); };
+  const lm = document.getElementById('listenMine');
+  if(lm) lm.onclick = ()=> speak(ta.value.replace(/_{2,}/g,' blank '));
+  document.getElementById('check').onclick = ()=> checkWriting(ta.value.trim());
+}
+
+function checkWriting(t){
+  const box = document.getElementById('wfb');
+  const msgs = [];
+  if(!t){ box.innerHTML = `<div class="fb no">문장을 먼저 써 주세요.</div>`; return; }
+  if(t.includes('__')) msgs.push('빈칸(____)을 내 생각으로 채워 주세요. 아이디어 단어를 눌러도 돼요.');
+  const {found, errs} = analyze(t);
+  const sentences = t.split(/[.!?\n]+/).map(x=>x.trim()).filter(x=>x.split(/\s+/).length >= 3);
+  if(found.length < 2) msgs.push(`<b>서로 다른</b> 목표 표현을 2개 이상 써 주세요. (지금 ${found.length}개)`);
+  if(sentences.length < 2) msgs.push('문장을 2개 써 주세요. 문장 끝에 마침표(.)를 찍었는지도 확인하세요.');
+  errs.forEach(e=>msgs.push(e));
+
+  const usedLine = found.length ? `사용한 표현: ${found.map(f=>`<span class="pill">${f}</span>`).join('')}` : '';
+  if(msgs.length){
+    box.innerHTML = `
+      <div class="preview">${highlight(t)}</div>
+      <div style="font-size:.9rem">${usedLine}</div>
+      <div class="fb no"><b>조금만 고쳐 볼까요?</b><ul class="msgs">${msgs.map(m=>`<li>${m}</li>`).join('')}</ul></div>`;
+    return;
+  }
+
+  const model = document.getElementById('modelHolder').innerHTML;
+  box.innerHTML = `
+    <div class="fb ok"><b>형태는 정확해요!</b> 이제 뜻이 상황에 맞는지 스스로 확인해 보세요.</div>
+    <div class="preview">${highlight(t)}</div>
+    <div class="selfcheck">
+      <b style="font-size:.92rem">내 문장 점검하기</b>
+      ${found.map(f=>`<label><input type="checkbox" class="sc"> <span>${SELF[f]}</span></label>`).join('')}
+      <div style="font-size:.85rem;color:var(--muted);margin-top:4px">아니라면 위에서 문장을 고친 뒤 <b>확인하기</b>를 다시 누르세요.</div>
+    </div>
+    <div class="row"><button class="ghost" id="model">예시 문장 보기</button></div>
+    <div class="hint" id="modelBox"><div class="ctxrow">${sayBtn(plain(model))}<div>${model}
+      <div class="ko">나는 음악을 맡고 있다. 사람들이 퀴즈를 들어야 하니까 소음을 줄여야 한다.</div></div></div></div>
+    <div class="row end"><button class="primary" id="go" disabled>단서 받기 →</button></div>`;
+  const go = document.getElementById('go');
+  const boxes = box.querySelectorAll('.sc');
+  boxes.forEach(b=> b.onchange = ()=>{ go.disabled = ![...boxes].every(x=>x.checked); });
+  document.getElementById('model').onclick = ()=>{ document.getElementById('modelBox').style.display='block'; };
+  go.onclick = ()=>{
+    S.sentence = t; S.used = found; S.writePassed = true; updateProgress();
+    unlockClue(3, 5, showSolve);
+  };
+}
+
+function showSolve(){
+  setStep(6); S.rerender = showSolve;
+  main.innerHTML = `
+    <div class="topbar"><span class="label">FINAL · 약 0.5분</span>${backBtn(5)}</div>
+    <h2>범인을 찾아라</h2>
+    <p class="inst">용의자 정보와 아래 단서 보드를 함께 보고 추리하세요.</p>
+    ${glossBox()}
+    ${suspectsHTML()}
+    <div id="quiz"></div>`;
+  runQuiz('solve', SOLVE_QS, document.getElementById('quiz'), showEnd);
+}
+
+function showEnd(){
+  setStep(7); S.rerender = showEnd;
+  const sc = score();
+  const ending = 'Sora rewrote the quiz cards with short instructions. Her change will <b>make a difference</b> at the booth!';
+  const rows = [
+    ['in charge of','~을 책임지는','Mina is in charge of the English booth.'],
+    ['take part in','~에 참여하다','She asked everyone to take part in a quiz game.'],
+    ['figure out','알아내다','The team could not figure out how to make it interesting.'],
+    ['work on','~에 공들이다','They decided to work on a mystery theme.'],
+    ['cut down on','~을 줄이다','They decided to cut down on long instructions.'],
+    ['make a difference','좋은 변화를 가져오다','These changes will make a difference.']
+  ];
+  main.innerHTML = `
+    <div class="topbar"><span class="label">CASE CLOSED</span>${backBtn(6)}</div>
+    <h2>사건 해결!</h2>
+    <div class="ctx"><div class="ctxrow">${sayBtn(plain(ending))}<div>${ending}
+      <div class="ko">소라는 짧은 설명으로 퀴즈 카드를 다시 썼어요. 소라의 변화가 부스에 좋은 영향을 줄 거예요!</div></div></div></div>
+    <div class="stat">
+      <div><b>${sc.first} / ${sc.total}</b>한 번에 맞힌 문제</div>
+      <div><b>${S.used.length}</b>내 문장에 쓴 표현</div>
+    </div>
+    ${S.sentence?`<p class="prompt">내가 쓴 문장</p><div class="preview">${highlight(S.sentence)}</div>`:''}
+    <div class="bonus">
+      <span class="label">BONUS CASE</span>
+      <p class="prompt" style="margin-top:2px">시간이 남았나요? 보너스 사건에 도전하세요!</p>
+      <p class="inst" style="margin:0 0 8px">소라가 새로 쓴 카드에 실수가 있어요. 고쳐 주고, 아직 안 써 본 표현으로 문장을 하나 더 써 보세요.</p>
+      <button class="primary" id="bonus">${S.bonusDone?'보너스 다시 보기':'보너스 사건 시작 →'}</button>
+    </div>
+    <p class="prompt" style="margin-top:18px">오늘의 표현 정리</p>
+    <table><tr><th></th><th>Expression</th><th>뜻</th><th>본문 속 문장</th></tr>
+      ${rows.map(r=>`<tr><td>${sayBtn(r[0]+'. '+r[2])}</td><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+    </table>
+    <div class="row end"><button class="ghost" id="again">처음부터 다시</button></div>`;
+  document.getElementById('bonus').onclick = showBonus;
+  document.getElementById('again').onclick = ()=>location.reload();
+}
+
+function showBonus(){
+  stopAll(); S.rerender = showBonus;
+  window.scrollTo({top:0,behavior:'smooth'});
+  main.innerHTML = `
+    <div class="topbar"><span class="label">BONUS CASE · 1/2</span>${backBtn(7,'← 결과로 돌아가기')}</div>
+    <h2>소라의 카드 고치기</h2>
+    <p class="inst">소라가 새로 쓴 카드에 실수가 있어요. 바르게 고친 문장을 고르세요.</p>
+    ${glossBox()}
+    <div id="quiz"></div>`;
+  runQuiz('bonus', BONUS_QS, document.getElementById('quiz'), showBonusWrite);
+}
+
+function showBonusWrite(){
+  stopAll(); S.rerender = showBonusWrite;
+  window.scrollTo({top:0,behavior:'smooth'});
+  const notUsed = EXPR.map(x=>x.e).filter(e=>!S.used.includes(e));
+  const q = 'Write one sentence about the case. Use an expression you haven\'t used yet.';
+  main.innerHTML = `
+    <div class="topbar"><span class="label">BONUS CASE · 2/2</span>${backBtn(7,'← 결과로 돌아가기')}</div>
+    <h2>마지막 도전</h2>
+    <p class="inst">아직 써 보지 않은 표현 중 하나로 이번 사건에 대한 문장을 써 보세요.</p>
+    ${glossBox()}
+    <div class="ctx"><div class="ctxrow">${sayBtn(q)}<div>${q}
+      <div class="ko">이번 사건에 대해 한 문장을 쓰세요. 아직 쓰지 않은 표현을 사용하세요.</div></div></div></div>
+    <div style="font-size:.9rem;margin-bottom:6px">아직 안 쓴 표현: ${notUsed.map(e=>`<span class="pill">${e}</span>`).join('')}</div>
+    <textarea id="bta" rows="3" placeholder="예: Sora figured out the problem with the cards."></textarea>
+    <div class="row end"><button class="primary" id="bcheck">확인하기</button></div>
+    <div id="bfb"></div>`;
+  const ta = document.getElementById('bta');
+  ta.value = S.bonusDraft;
+  ta.oninput = ()=>{ S.bonusDraft = ta.value; };
+  document.getElementById('bcheck').onclick = ()=>{
+    const t = ta.value.trim(), box = document.getElementById('bfb');
+    const {found, errs} = analyze(t);
+    const fresh = found.filter(f=>notUsed.includes(f));
+    const msgs = [];
+    if(t.split(/\s+/).filter(Boolean).length < 5) msgs.push('조금 더 길게 써 보세요.');
+    if(!fresh.length) msgs.push('아직 안 쓴 표현을 하나 사용해 주세요.');
+    errs.forEach(e=>msgs.push(e));
+    if(msgs.length){
+      box.innerHTML = `<div class="preview">${highlight(t)}</div><div class="fb no"><ul class="msgs">${msgs.map(m=>`<li>${m}</li>`).join('')}</ul></div>`;
+    } else {
+      S.bonusDone = true;
+      box.innerHTML = `<div class="preview">${highlight(t)}</div>
+        <div class="fb ok"><b>훌륭해요, 탐정님!</b> 오늘 6개 표현 중 <b>${new Set([...S.used, ...fresh]).size}개</b>를 직접 써 봤어요.<br>
+        <span style="font-size:.9rem">${SELF[fresh[0]]}</span></div>
+        <div class="row end"><button class="primary" data-to="7">결과로 돌아가기</button></div>`;
+    }
+  };
+}
+
+const STAGES = [showIntro, showRead, showMeaning, showForm, showUse, showWrite, showSolve, showEnd];
+
+/* ================= 공통 이벤트 ================= */
+document.addEventListener('click', e=>{
+  // 어려운 단어: 뜻 + 발음
+  const w = e.target.closest('.w');
+  if(w){
+    const box = document.getElementById('wordbox');
+    if(box) box.innerHTML = `<b>${w.textContent}</b>${w.dataset.k}`;
+    speak(w.textContent);
+    return;
+  }
+  // 듣기 버튼, 노란 표현
+  const say = e.target.closest('[data-say]');
+  if(say){ e.stopPropagation(); speak(say.dataset.say); return; }
+}, true);
+
+main.addEventListener('click', e=>{
+  const to = e.target.closest('[data-to]');
+  if(to){ STAGES[+to.dataset.to](); return; }
+  if(e.target.id === 'glossBtn'){
+    S.glossOpen = !S.glossOpen;
+    document.getElementById('gpanel').hidden = !S.glossOpen;
+    e.target.classList.toggle('sel', S.glossOpen);
+    e.target.textContent = S.glossOpen ? '표현 뜻 닫기' : '표현 뜻 보기 (한국어 도움)';
+  }
+});
+document.getElementById('steps').addEventListener('click', e=>{
+  const b = e.target.closest('[data-step]');
+  if(b && !b.disabled) STAGES[+b.dataset.step]();
+});
+document.getElementById('koToggle').onclick = ()=> setKo(!document.body.classList.contains('show-ko'));
+document.getElementById('helpBtn').onclick = ()=> setHelp(!S.help);
+const rateBtn = document.getElementById('rateBtn');
+if(!TTS) rateBtn.style.display = 'none';
+rateBtn.onclick = ()=>{
+  S.rate = S.rate > 0.8 ? 0.65 : 0.9;
+  rateBtn.classList.toggle('on', S.rate < 0.8);
+  rateBtn.textContent = S.rate < 0.8 ? '속도: 천천히' : '속도: 보통';
+};
+
+renderBoard();
+showIntro();
+</script>
+</body>
+</html>
